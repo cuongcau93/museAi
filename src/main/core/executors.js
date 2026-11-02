@@ -37,17 +37,23 @@ function hue(seed) { let h = 0; for (const c of seed) h = (h * 31 + c.charCodeAt
 
 const FONT = 'C\\:/Windows/Fonts/arial.ttf';
 
-async function demoImage({ prompt, ratio, outPath, label }) {
+async function demoImage({ prompt, ratio, outPath, label, refImage }) {
   const [w, h] = dims(ratio);
-  const fontsize = Math.max(18, Math.round(w / 26));
+  const fontsize = Math.max(18, Math.round(w / 28));
   const wrapWidth = Math.max(16, Math.floor(w / (fontsize * 0.52)));
   const txtFile = path.join(os.tmpdir(), 'demo_' + Date.now() + Math.random().toString(36).slice(2) + '.txt');
-  fs.writeFileSync(txtFile, wrap(label ? label + '\n\n' + prompt : prompt, wrapWidth), 'utf8');
-  const H = hue(prompt || 'x');
-  const vf = `hue=h=${H},` +
-    `drawtext=fontfile='${FONT}':textfile='${escPath(txtFile)}':fontcolor=white:fontsize=${fontsize}:` +
-    `x=(w-text_w)/2:y=(h-text_h)/2:line_spacing=8:box=1:boxcolor=0x00000066:boxborderw=24`;
-  await run(['-f', 'lavfi', '-i', `color=c=0x1e2a44:s=${w}x${h}`, '-frames:v', '1', '-vf', vf, '-y', outPath]);
+  fs.writeFileSync(txtFile, wrap(label ? label + '\n' + prompt : prompt, wrapWidth), 'utf8');
+  const caption = `drawtext=fontfile='${FONT}':textfile='${escPath(txtFile)}':fontcolor=white:fontsize=${fontsize}:` +
+    `x=(w-text_w)/2:y=h-text_h-30:line_spacing=8:box=1:boxcolor=0x000000aa:boxborderw=18`;
+  if (refImage && fs.existsSync(refImage)) {
+    // Fixed character: the reference photo is the base, prompt captioned at the bottom.
+    const vf = `scale=${w}:${h}:force_original_aspect_ratio=increase,crop=${w}:${h},${caption}`;
+    await run(['-i', refImage, '-vf', vf, '-frames:v', '1', '-y', outPath]);
+  } else {
+    const H = hue(prompt || 'x');
+    const vf = `hue=h=${H},drawtext=fontfile='${FONT}':textfile='${escPath(txtFile)}':fontcolor=white:fontsize=${fontsize}:x=(w-text_w)/2:y=(h-text_h)/2:line_spacing=8:box=1:boxcolor=0x00000066:boxborderw=24`;
+    await run(['-f', 'lavfi', '-i', `color=c=0x1e2a44:s=${w}x${h}`, '-frames:v', '1', '-vf', vf, '-y', outPath]);
+  }
   try { fs.unlinkSync(txtFile); } catch {}
   return outPath;
 }
@@ -72,28 +78,24 @@ async function execute(task, ctx, onStep) {
   fs.mkdirSync(base, { recursive: true });
   const stamp = Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
 
+  const refImages = (task.images || []).map(i => i && i.imageLocalPath).filter(Boolean);
+
   if (executor === 'muse') {
     if (onStep) onStep('muse.ai: đang tạo');
-    if (task.kind === 'video') {
-      // muse video generation would go here; reuse image flow as a stand-in call point
-      const r = await museai.generateImage({ profileId: task.accountId || 'default', profilesRoot, chromePath, prompt: task.prompt, selectors, downloadDir: base, index: 1 });
-      return { files: [r.output] };
-    }
-    const r = await museai.generateImage({ profileId: task.accountId || 'default', profilesRoot, chromePath, prompt: task.prompt, selectors, downloadDir: base, index: 1 });
+    const r = await museai.generateImage({ profileId: task.accountId || 'default', profilesRoot, chromePath, prompt: task.prompt, selectors, downloadDir: base, index: 1, refImages });
     return { files: [r.output] };
   }
 
   // demo executor
   if (task.kind === 'video') {
     if (onStep) onStep('demo: render clip');
-    const img = task.images && task.images[0] && task.images[0].imageLocalPath;
     const out = path.join(base, `clip_${stamp}.mp4`);
-    await demoVideo({ prompt: task.prompt, ratio: task.ratio, outPath: out, imagePath: img, label: task.label });
+    await demoVideo({ prompt: task.prompt, ratio: task.ratio, outPath: out, imagePath: refImages[0], label: task.label });
     return { files: [out] };
   }
-  if (onStep) onStep('demo: render ảnh');
+  if (onStep) onStep('demo: render ảnh' + (refImages[0] ? ' (nhân vật cố định)' : ''));
   const out = path.join(base, `img_${stamp}.png`);
-  await demoImage({ prompt: task.prompt, ratio: task.ratio, outPath: out, label: task.label });
+  await demoImage({ prompt: task.prompt, ratio: task.ratio, outPath: out, label: task.label, refImage: refImages[0] });
   return { files: [out] };
 }
 

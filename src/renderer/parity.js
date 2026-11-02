@@ -31,13 +31,20 @@ const I18N = {
 
 // ======== shared: projects dropdowns + studio data ========
 let STUDIO = null;
-async function loadStudio() { STUDIO = await api.studio.get(); fillProjectSelects(); renderAssets(); }
+async function loadStudio() { STUDIO = await api.studio.get(); fillProjectSelects(); renderAssets(); renderCast(); }
+// fixed-character reference images (first image of each character that has one)
+function castImages() { return (STUDIO && STUDIO.characters || []).filter(c => c.images && c.images.length).map(c => ({ name: c.name, imageLocalPath: c.images[0] })); }
+function renderCast() {
+  const el = $('cl-cast'); if (!el) return;
+  const cast = castImages();
+  el.innerHTML = cast.length ? 'Nhân vật cố định: ' + cast.map(c => esc(c.name)).join(', ') : '<span class="hint">Chưa có nhân vật nào có ảnh trong tab Tư liệu.</span>';
+}
 function fillProjectSelects() {
   if (!STUDIO) return;
   const opts = STUDIO.projects.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('');
   for (const id of ['cl-project', 'st-project']) { const el = $(id); if (el) { el.innerHTML = opts; el.value = STUDIO.current; } }
 }
-api.on.studioUpdate((s) => { STUDIO = s; fillProjectSelects(); renderAssets(); });
+api.on.studioUpdate((s) => { STUDIO = s; fillProjectSelects(); renderAssets(); renderCast(); });
 
 // ======== central task bus ========
 let TASKS = [];
@@ -87,12 +94,13 @@ $('cl-write').onclick = async () => {
 };
 $('cl-images').onclick = async () => {
   clone.imgTasks = {};
+  const cast = $('cl-usecast').checked ? castImages().slice(0, 4) : [];
   for (const c of clone.cards) {
     if (!c.prompt) continue;
-    const t = await api.tasks.submit({ kind: 'image', prompt: c.prompt, ratio: $('cl-ratio').value, project: $('cl-project').value, label: 'clone #' + c.n });
+    const t = await api.tasks.submit({ kind: 'image', prompt: c.prompt, ratio: $('cl-ratio').value, project: $('cl-project').value, label: 'clone #' + c.n, images: cast });
     clone.imgTasks[t.id] = c.n; c.status = 'queued'; c.taskId = t.id;
   }
-  renderCards(); plog('cl-log', '⏳ Đã đưa ảnh vào hàng đợi.');
+  renderCards(); plog('cl-log', '⏳ Đã đưa ảnh vào hàng đợi' + (cast.length ? ' (gắn ' + cast.length + ' nhân vật cố định).' : '.'));
 };
 $('cl-clips').onclick = async () => {
   clone.clipTasks = {};

@@ -49,6 +49,8 @@
           <div><label>Ngôn ngữ</label><select id="cl-lang"><option value="vi">Tiếng Việt</option><option value="en">English</option></select></div>
           <div><label>Giây/cảnh tối đa</label><input id="cl-beat" type="number" value="9"></div>
         </div>
+        <label><input type="checkbox" id="cl-usecast" checked style="width:auto"> Gắn <b>nhân vật cố định</b> (ảnh từ tab Tư liệu) để nhất quán mọi cảnh</label>
+        <div class="filelist" id="cl-cast">—</div>
         <div class="btns">
           <button class="btn" id="cl-analyze">1 · Phân tích</button>
           <button class="btn sec" id="cl-split" disabled>2 · Tách cảnh</button>
@@ -377,6 +379,10 @@
         <input id="sel-btn" placeholder='button:has-text("Generate")'>
         <label>resultImage (ảnh kết quả)</label>
         <input id="sel-img" placeholder='img[src^="blob:"]'>
+        <label>uploadInput (ô upload ảnh nhân vật cố định — tuỳ chọn)</label>
+        <input id="sel-upload" placeholder='input[type="file"]'>
+        <label>Bộ tạo ảnh/clip (executor)</label>
+        <select id="sel-exec"><option value="demo">demo (ffmpeg placeholder — không cần tài khoản)</option><option value="muse">muse.ai (tạo thật — cần đăng nhập + selector đúng)</option></select>
         <div class="btns"><button class="btn" id="sel-save">Lưu selector</button>
           <span class="pill" id="sel-saved" style="display:none">Đã lưu ✓</span></div>
         <p class="hint">Các selector dùng cú pháp Playwright. Mở muse.ai, bấm F12 để tìm selector đúng rồi dán vào đây.</p>

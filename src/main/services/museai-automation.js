@@ -14,6 +14,7 @@ const DEFAULT_SELECTORS = {
   promptInput: 'textarea, [contenteditable="true"], input[type="text"]',
   generateButton: 'button:has-text("Generate"), button:has-text("Create"), button[type="submit"]',
   resultImage: 'img[src^="blob:"], img[src*="muse"], .result img, [data-result] img',
+  uploadInput: 'input[type="file"]',        // for fixed-character reference images (optional)
   resultTimeoutMs: 180000
 };
 
@@ -45,10 +46,19 @@ async function downloadImageElement(page, handle, outPath) {
 }
 
 // Generate one image from a prompt. Returns the saved file path.
-async function generateImage({ profileId, profilesRoot, chromePath, prompt, selectors = {}, downloadDir, index = 1 }) {
+async function generateImage({ profileId, profilesRoot, chromePath, prompt, selectors = {}, downloadDir, index = 1, refImages = [] }) {
   const sel = { ...DEFAULT_SELECTORS, ...selectors };
   const { page } = await engine.launch({ profileId, profilesRoot, chromePath, headless: false });
   if (!page.url().startsWith('http')) await page.goto(sel.generateUrl, { waitUntil: 'domcontentloaded' });
+
+  // Fixed-character reference images: upload before generating, if a file input is present.
+  if (refImages && refImages.length && sel.uploadInput) {
+    try {
+      const up = await page.waitForSelector(sel.uploadInput, { timeout: 8000, state: 'attached' });
+      await up.setInputFiles(refImages.slice(0, 4));
+      await page.waitForTimeout(1500);
+    } catch { /* no upload control / not supported — continue text-only */ }
+  }
 
   // snapshot current result images so we can detect the NEW one
   const before = new Set(await page.$$eval(sel.resultImage, els => els.map(e => e.getAttribute('src') || '')).catch(() => []));

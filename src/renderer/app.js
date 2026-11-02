@@ -108,12 +108,16 @@ $('set-wbin').onclick = async () => { const f = await api.dialog.openFiles({ fil
 $('set-wmodel').onclick = async () => { const f = await api.dialog.openFiles({ filters: [{ name: 'model', extensions: ['bin', 'gguf'] }] }); if (f[0]) { await api.settings.set({ whisperModel: f[0] }); refreshSettings(); } };
 $('set-chrome').onclick = async () => { const f = await api.dialog.openFiles({ filters: [{ name: 'exe', extensions: ['exe'] }] }); if (f[0]) { await api.settings.set({ chromePath: f[0] }); loadMuseSettings(); } };
 $('sel-save').onclick = async () => {
-  await api.settings.set({ museSelectors: {
-    generateUrl: $('sel-url').value.trim() || undefined,
-    promptInput: $('sel-input').value.trim() || undefined,
-    generateButton: $('sel-btn').value.trim() || undefined,
-    resultImage: $('sel-img').value.trim() || undefined
-  }});
+  await api.settings.set({
+    taskExecutor: $('sel-exec').value,
+    museSelectors: {
+      generateUrl: $('sel-url').value.trim() || undefined,
+      promptInput: $('sel-input').value.trim() || undefined,
+      generateButton: $('sel-btn').value.trim() || undefined,
+      resultImage: $('sel-img').value.trim() || undefined,
+      uploadInput: $('sel-upload').value.trim() || undefined
+    }
+  });
   $('sel-saved').style.display = 'inline-block'; setTimeout(() => $('sel-saved').style.display = 'none', 1500);
 };
 async function loadMuseSettings() {
@@ -124,6 +128,8 @@ async function loadMuseSettings() {
   $('sel-input').value = sel.promptInput || '';
   $('sel-btn').value = sel.generateButton || '';
   $('sel-img').value = sel.resultImage || '';
+  $('sel-upload').value = sel.uploadInput || '';
+  $('sel-exec').value = s.taskExecutor || 'demo';
 }
 refreshSettings(); loadMuseSettings();
 
