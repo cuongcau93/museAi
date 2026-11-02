@@ -30,6 +30,21 @@ chỉ tái hiện *chức năng* (ý tưởng/chức năng không được bảo
 | **Ghi cứng phụ đề** | Burn .srt lên video (Shorts/TikTok dọc), cỡ chữ/viền tuỳ chỉnh, hỗ trợ tiếng Việt có dấu. | ✅ render + xác minh chữ trên khung hình |
 | **Đăng MXH** | Soạn bài Facebook tự động (mặc định chỉ soạn, không tự đăng), mở LadiPage/web trong profile. | ⚙️ build ✅; flow cần chỉnh selector |
 
+**Giai đoạn 4 — full parity (dựng lại các view còn thiếu của bản gốc)**
+
+| Module | Mô tả | Test |
+|---|---|---|
+| **Clone** | Pipeline faceless đầy đủ: kịch bản/audio → phân tích style+nhân vật → tách cảnh → prompt → ảnh từng cảnh → clip → ghép. Dùng Claude nếu có key, nếu không chạy offline. | ✅ build + hạ tầng chạy |
+| **Studio (hàng đợi)** | Bảng điều khiển tạo hàng loạt: soạn nhiều prompt → task queue → run/stop/clear, theo dõi trạng thái realtime. | ✅ queue chạy LIVE |
+| **Tư liệu (Assets)** | Store dùng chung `studio.json`: dự án, nhân vật cố định (+ảnh), mẫu prompt. | ✅ |
+| **Thư viện (Library)** | Duyệt thư mục output, lọc ảnh/video, chọn nhiều → ghép/xoá/mở. | ✅ |
+| **API server** | REST cục bộ `127.0.0.1:48900` `/api/v1/tasks`, Bearer auth, không CORS. | ✅ **test LIVE**: POST→queue→file, 401 khi thiếu key |
+| **Task executor** | `demo` (ffmpeg vẽ ảnh/clip placeholder — chạy không cần tài khoản) \| `muse` (automation thật). | ✅ demo render ảnh+clip |
+| **i18n + Theme** | Đổi ngôn ngữ VI/EN (nav), theme tối/sáng, lưu localStorage. | ✅ |
+
+**Chưa dựng (logic nằm trong worker Python biên dịch của bản gốc — không đọc được):**
+"Bộ hiểu" Muse & prompt-pack riêng của họ (bản này thay bằng Claude/offline), chuỗi drama nhiều tập (`drama:*`), sinh kịch bản từ trang sản phẩm (`scripts:generate` + fetch-html), xuất bản Facebook Reels qua Graph API token, tích hợp LadiPage sâu, và phần **bản quyền/license** (cố ý bỏ).
+
 ## Chạy
 
 ```bash

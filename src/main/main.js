@@ -11,10 +11,20 @@ const museai = require('./services/museai-automation.js');
 const engine = require('./services/browser-engine.js');
 const llm = require('./services/llm-service.js');
 const social = require('./services/social-service.js');
+const stores = require('./core/stores.js');
+const media = require('./core/media.js');
+const queue = require('./core/task-queue.js');
+const apiServer = require('./core/api-server.js');
+const clone = require('./core/clone-orchestrator.js');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 
 function profilesRoot() { return path.join(app.getPath('userData'), 'profiles'); }
+
+// forward a named event to the renderer: event:<name>
+function sendEvent(name, payload) {
+  if (win && !win.isDestroyed()) win.webContents.send('event:' + name, payload);
+}
 
 // ---- accounts stored in settings (array of {id,name}) ----
 function listAccounts() { const s = loadSettings(); return s.accounts || []; }
@@ -48,6 +58,25 @@ function createWindow() {
 
 app.whenReady().then(() => {
   createWindow();
+  // init task queue (executor context from settings) and local API server
+  queue.init({
+    emit: (task) => {
+      sendEvent('task-update', { task });
+      if (task && task.status === 'succeeded' && task.kind === 'video') sendEvent('video-completed', { task });
+    },
+    ctx: () => {
+      const s = loadSettings();
+      return {
+        executor: s.taskExecutor || 'demo',
+        outputDir: media.outputDir(),
+        profilesRoot: profilesRoot(),
+        chromePath: s.chromePath,
+        selectors: s.museSelectors || {}
+      };
+    },
+    maxConcurrent: 1
+  });
+  try { apiServer.start({ onCrmJob: (job) => sendEvent('crm-job', job) }); } catch (e) { /* ignore */ }
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
 });
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
@@ -138,5 +167,54 @@ ipcMain.handle('social:openSite', (_e, { profileId, url }) => {
   const s = loadSettings();
   return social.openSite({ profileId, url, profilesRoot: profilesRoot(), chromePath: s.chromePath });
 });
+
+// ---- tasks ----
+ipcMain.handle('tasks:submit', (_e, p) => queue.submit(p));
+ipcMain.handle('tasks:list', () => queue.list());
+ipcMain.handle('tasks:run', (_e, ids) => queue.run(ids));
+ipcMain.handle('tasks:cancel', (_e, id) => queue.cancel(id));
+ipcMain.handle('tasks:retry', (_e, id) => queue.retry(id));
+ipcMain.handle('tasks:remove', (_e, id) => queue.remove(id));
+ipcMain.handle('tasks:stop-all', () => queue.stopAll());
+ipcMain.handle('tasks:clear-finished', () => queue.clearFinished());
+
+// ---- studio store ----
+ipcMain.handle('studio:get', () => stores.getStudio());
+ipcMain.handle('studio:save', (_e, patch) => { const n = stores.saveStudio(patch); sendEvent('studio-update', n); return n; });
+ipcMain.handle('studio:add-image', (_e, arg) => stores.addImage(arg));
+
+// ---- projects ----
+ipcMain.handle('projects:add', (_e, name) => { const r = stores.addProject(name); sendEvent('studio-update', stores.getStudio()); return r; });
+ipcMain.handle('projects:update', (_e, { id, patch }) => { const r = stores.updateProject(id, patch); sendEvent('studio-update', stores.getStudio()); return r; });
+ipcMain.handle('projects:set-current', (_e, id) => { const r = stores.setCurrentProject(id); sendEvent('studio-update', stores.getStudio()); return r; });
+ipcMain.handle('projects:remove', (_e, id) => { const r = stores.removeProject(id); sendEvent('studio-update', stores.getStudio()); return r; });
+
+// ---- media / library ----
+ipcMain.handle('media:list-library', () => media.listLibrary());
+ipcMain.handle('media:list-videos', () => media.listVideos());
+ipcMain.handle('media:trash', (_e, paths) => media.trash(paths));
+ipcMain.handle('media:reveal', (_e, p) => media.reveal(p));
+ipcMain.handle('media:open-path', (_e, p) => media.openPath(p));
+ipcMain.handle('media:open-output-folder', () => media.openOutputFolder());
+ipcMain.handle('media:select-file', (_e, o) => media.selectFile(o));
+ipcMain.handle('media:select-folder', () => media.selectFolder());
+ipcMain.handle('media:select-images', (_e, multi) => media.selectImages(multi));
+ipcMain.handle('media:select-video', () => media.selectVideo());
+ipcMain.handle('media:copy-file', (_e, o) => media.copyFile(o));
+ipcMain.handle('media:merge', (_e, o) => media.mergeVideos({ ...o, onProgress: (p) => sendEvent('merge-progress', p) }));
+
+// ---- clone pipeline ----
+ipcMain.handle('clone:styles', () => clone.stylesList());
+ipcMain.handle('clone:analyze', (_e, o) => clone.analyze(o, (p) => sendEvent('clone-progress', p)));
+ipcMain.handle('clone:split', (_e, o) => clone.split(o));
+ipcMain.handle('clone:write-scenes', (_e, o) => clone.writeScenes(o));
+ipcMain.handle('clone:merge-clips', (_e, o) => clone.mergeClips(o, (p) => sendEvent('clone-progress', p)));
+
+// ---- local API server ----
+ipcMain.handle('api:status', () => apiServer.status());
+ipcMain.handle('api:start', () => apiServer.start({ onCrmJob: (job) => sendEvent('crm-job', job) }));
+ipcMain.handle('api:stop', () => apiServer.stop());
+ipcMain.handle('api:get-key', (_e, regen) => apiServer.getApiKey(!!regen));
+ipcMain.handle('api:probe', () => apiServer.probe());
 
 app.on('before-quit', () => { engine.closeAll().catch(() => {}); });

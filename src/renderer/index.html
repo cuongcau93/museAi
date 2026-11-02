@@ -11,18 +11,141 @@
   <aside class="side">
     <div class="brand">MuseAuto Studio<small>clean-room · v0.1</small></div>
     <nav class="nav">
+      <button data-view="clone" class="active">🎞️ Clone</button>
       <button data-view="ai">✨ AI kịch bản</button>
-      <button data-view="storyboard" class="active">📝 Storyboard</button>
+      <button data-view="storyboard">📝 Storyboard</button>
+      <button data-view="studio">🧩 Studio (hàng đợi)</button>
       <button data-view="museai">🤖 muse.ai</button>
       <button data-view="tts">🔊 Giọng đọc</button>
       <button data-view="video">🎬 Ghép video</button>
       <button data-view="subs">💬 Phụ đề</button>
+      <button data-view="assets">📦 Tư liệu</button>
+      <button data-view="library">🗂️ Thư viện</button>
       <button data-view="social">📣 Đăng MXH</button>
+      <button data-view="api">🔌 API</button>
       <button data-view="settings">⚙️ Cài đặt</button>
     </nav>
+    <div style="margin-top:auto;padding:10px;border-top:1px solid var(--line);display:flex;gap:8px;align-items:center">
+      <button class="btn sec" id="theme-toggle" style="flex:0 0 auto;padding:6px 10px">🌙</button>
+      <select id="lang-select" style="flex:1"><option value="vi">VI</option><option value="en">EN</option></select>
+    </div>
   </aside>
 
   <main class="main">
+    <!-- CLONE -->
+    <section id="clone" class="view active">
+      <h1>Clone — tạo video faceless tự động</h1>
+      <p class="sub">Kịch bản/audio → phân tích phong cách + nhân vật → tách cảnh → prompt → ảnh từng cảnh → clip → ghép video.</p>
+      <div class="card">
+        <div class="row">
+          <div><label>Dự án</label><select id="cl-project"></select></div>
+          <div><label>Kịch bản (.txt) hoặc audio</label>
+            <div class="btns"><button class="btn sec" id="cl-script">Kịch bản…</button><button class="btn sec" id="cl-audio">Audio…</button></div>
+            <div class="filelist" id="cl-src">—</div></div>
+        </div>
+        <div class="row">
+          <div><label>Phong cách</label><select id="cl-style"></select></div>
+          <div><label>Tỉ lệ</label><select id="cl-ratio"><option>16:9</option><option>9:16</option><option>1:1</option></select></div>
+          <div><label>Ngôn ngữ</label><select id="cl-lang"><option value="vi">Tiếng Việt</option><option value="en">English</option></select></div>
+          <div><label>Giây/cảnh tối đa</label><input id="cl-beat" type="number" value="9"></div>
+        </div>
+        <div class="btns">
+          <button class="btn" id="cl-analyze">1 · Phân tích</button>
+          <button class="btn sec" id="cl-split" disabled>2 · Tách cảnh</button>
+          <button class="btn sec" id="cl-write" disabled>3 · Viết prompt</button>
+          <button class="btn ok" id="cl-images" disabled>4 · Tạo ảnh (hàng loạt)</button>
+          <button class="btn ok" id="cl-clips" disabled>5 · Tạo clip</button>
+          <button class="btn ok" id="cl-merge" disabled>6 · Ghép video</button>
+          <button class="btn sec" id="cl-open-merged" disabled>Mở video</button>
+        </div>
+        <div class="bar"><i id="cl-prog"></i></div>
+        <div class="log" id="cl-log" style="display:none"></div>
+      </div>
+      <div id="cl-style-info"></div>
+      <div id="cl-scenes"></div>
+    </section>
+
+    <!-- STUDIO QUEUE -->
+    <section id="studio" class="view">
+      <h1>Studio — hàng đợi tạo ảnh/clip</h1>
+      <p class="sub">Soạn nhiều prompt (mỗi dòng trống tách 1 prompt) → đưa vào hàng đợi chạy qua executor.</p>
+      <div class="card">
+        <div class="row">
+          <div><label>Loại</label><select id="st-kind"><option value="image">Ảnh</option><option value="video">Clip</option></select></div>
+          <div><label>Tỉ lệ</label><select id="st-ratio"><option>16:9</option><option>9:16</option><option>1:1</option></select></div>
+          <div><label>Dự án</label><select id="st-project"></select></div>
+        </div>
+        <label>Prompt (mỗi đoạn cách nhau 1 dòng trống = 1 task)</label>
+        <textarea id="st-prompt" placeholder="a cat astronaut, flat vector&#10;&#10;a dog pilot, flat vector"></textarea>
+        <div class="btns"><button class="btn ok" id="st-run">Chạy ngay</button><button class="btn sec" id="st-hold">Thêm vào hàng đợi</button>
+          <span class="pill" id="st-count">0 prompt</span></div>
+      </div>
+      <div class="card">
+        <div class="btns"><button class="btn sec" id="sq-runall">▶ Chạy hàng đợi</button><button class="btn sec" id="sq-stop">■ Dừng hết</button>
+          <button class="btn sec" id="sq-clear">🧹 Xoá task đã xong</button><span class="pill" id="sq-count">0 task</span></div>
+        <div id="sq-list"></div>
+      </div>
+    </section>
+
+    <!-- ASSETS -->
+    <section id="assets" class="view">
+      <h1>Tư liệu (Studio data)</h1>
+      <p class="sub">Nhân vật cố định, mẫu prompt, người mẫu, ảnh luân phiên — dùng lại cho mọi dự án.</p>
+      <div class="card">
+        <h1 style="font-size:15px;margin-bottom:8px">Dự án</h1>
+        <div class="row"><input id="as-prj-name" placeholder="Tên dự án mới"><button class="btn sec" id="as-prj-add" style="flex:0 0 auto">+ Thêm</button></div>
+        <div id="as-prj-list" style="margin-top:8px"></div>
+      </div>
+      <div class="card">
+        <h1 style="font-size:15px;margin-bottom:8px">Nhân vật</h1>
+        <div class="btns"><button class="btn sec" id="as-char-add">+ Nhân vật</button></div>
+        <div id="as-chars"></div>
+      </div>
+      <div class="card">
+        <h1 style="font-size:15px;margin-bottom:8px">Mẫu prompt</h1>
+        <div class="btns"><button class="btn sec" id="as-tpl-add">+ Mẫu</button></div>
+        <div id="as-tpls"></div>
+      </div>
+    </section>
+
+    <!-- LIBRARY -->
+    <section id="library" class="view">
+      <h1>Thư viện — media đã tạo</h1>
+      <p class="sub">Ảnh & video trong thư mục output. Chọn nhiều để ghép/xoá.</p>
+      <div class="card">
+        <div class="btns">
+          <button class="btn sec" id="lib-all" data-f="all">Tất cả</button>
+          <button class="btn sec" id="lib-img" data-f="image">Ảnh</button>
+          <button class="btn sec" id="lib-vid" data-f="video">Video</button>
+          <button class="btn sec" id="lib-reload">↻ Tải lại</button>
+          <button class="btn sec" id="lib-open">📂 Mở thư mục</button>
+          <button class="btn ok" id="lib-merge" disabled>Ghép video đã chọn</button>
+          <button class="btn sec" id="lib-trash" disabled>🗑 Xoá</button>
+          <span class="pill" id="lib-sel">Đã chọn 0</span>
+        </div>
+        <div class="filelist" id="lib-path"></div>
+        <div id="library-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-top:10px"></div>
+      </div>
+    </section>
+
+    <!-- API -->
+    <section id="api" class="view">
+      <h1>API server nội bộ</h1>
+      <p class="sub">Máy chủ REST cục bộ để tích hợp (CRM/web). Mọi endpoint yêu cầu Bearer key, không bật CORS.</p>
+      <div class="card">
+        <div class="btns"><span class="pill" id="api-state">—</span>
+          <button class="btn sec" id="api-start">Bật</button><button class="btn sec" id="api-stop">Tắt</button>
+          <button class="btn sec" id="api-test">Test</button></div>
+        <label>Endpoint</label><input id="api-endpoint" readonly>
+        <label>API key</label>
+        <div class="btns"><input id="api-key" readonly style="flex:1"><button class="btn sec" id="api-key-copy" style="flex:0 0 auto">Copy</button>
+          <button class="btn sec" id="api-key-new" style="flex:0 0 auto">Tạo key mới</button></div>
+        <label>Ví dụ curl (tạo task)</label>
+        <div class="log" id="api-curl" style="display:block"></div>
+        <div class="log" id="api-log" style="display:none"></div>
+      </div>
+    </section>
+
     <!-- AI SCRIPT -->
     <section id="ai" class="view">
       <h1>AI viết kịch bản (Claude)</h1>
@@ -48,7 +171,7 @@
     </section>
 
     <!-- STORYBOARD -->
-    <section id="storyboard" class="view active">
+    <section id="storyboard" class="view">
       <h1>Storyboard</h1>
       <p class="sub">Kịch bản → chia cảnh → sinh prompt ảnh nhất quán cho từng cảnh.</p>
       <div class="card">
@@ -262,5 +385,6 @@
   </main>
 </div>
 <script type="module" src="app.js"></script>
+<script type="module" src="parity.js"></script>
 </body>
 </html>

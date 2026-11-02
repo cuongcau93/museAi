@@ -3,6 +3,10 @@
   --text:#e6e8ef; --muted:#9aa3b2; --accent:#5b8cff; --accent2:#3fb68b;
   --danger:#e5534b; --radius:10px;
 }
+body[data-theme="light"]{
+  --bg:#f4f6fb; --panel:#ffffff; --panel2:#eef1f7; --line:#d7dce6;
+  --text:#1a1e28; --muted:#5c6475; --accent:#3b6fe0; --accent2:#2a9c74;
+}
 *{box-sizing:border-box}
 body{margin:0;font:14px/1.5 "Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--text)}
 button{font:inherit;cursor:pointer}
