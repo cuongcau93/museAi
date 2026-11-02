@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MuseAuto Studio</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="brand">MuseAuto Studio<small>clean-room · v0.1</small></div>
+    <nav class="nav">
+      <button data-view="ai">✨ AI kịch bản</button>
+      <button data-view="storyboard" class="active">📝 Storyboard</button>
+      <button data-view="museai">🤖 muse.ai</button>
+      <button data-view="tts">🔊 Giọng đọc</button>
+      <button data-view="video">🎬 Ghép video</button>
+      <button data-view="subs">💬 Phụ đề</button>
+      <button data-view="social">📣 Đăng MXH</button>
+      <button data-view="settings">⚙️ Cài đặt</button>
+    </nav>
+  </aside>
+
+  <main class="main">
+    <!-- AI SCRIPT -->
+    <section id="ai" class="view">
+      <h1>AI viết kịch bản (Claude)</h1>
+      <p class="sub">Nhập chủ đề → Claude viết kịch bản → phân cảnh art-director nhất quán nhân vật. Cần Claude API key ở Cài đặt.</p>
+      <div class="card">
+        <label>Chủ đề / ý tưởng</label>
+        <textarea id="ai-topic" style="min-height:70px" placeholder="VD: 5 thói quen buổi sáng giúp bạn tỉnh táo cả ngày"></textarea>
+        <div class="row">
+          <div><label>Ngôn ngữ</label><input id="ai-lang" value="Tiếng Việt"></div>
+          <div><label>Thời lượng (phút)</label><input id="ai-min" type="number" value="3" step="0.5"></div>
+          <div><label>Phong cách hình</label>
+            <select id="ai-style"><option value="stick-figure">Stick-figure</option><option value="flat-vector">Flat vector</option>
+              <option value="storybook">Storybook</option><option value="cinematic">Cinematic 3D</option><option value="anime">Anime</option></select></div>
+        </div>
+        <div class="btns"><button class="btn" id="ai-write">1 · Viết kịch bản</button>
+          <button class="btn ok" id="ai-board" disabled>2 · Phân cảnh + prompt</button></div>
+        <div class="bar"><i id="ai-prog"></i></div>
+        <div class="log" id="ai-log" style="display:none"></div>
+      </div>
+      <label>Kịch bản (sửa được)</label>
+      <textarea id="ai-script" style="min-height:140px"></textarea>
+      <div id="ai-out"></div>
+    </section>
+
+    <!-- STORYBOARD -->
+    <section id="storyboard" class="view active">
+      <h1>Storyboard</h1>
+      <p class="sub">Kịch bản → chia cảnh → sinh prompt ảnh nhất quán cho từng cảnh.</p>
+      <div class="card">
+        <label>Kịch bản / lời dẫn</label>
+        <textarea id="sb-script" placeholder="Dán kịch bản ở đây. Mỗi đoạn trống sẽ tách cảnh mới..."></textarea>
+        <div class="row">
+          <div><label>Phong cách</label>
+            <select id="sb-style">
+              <option value="stick-figure">Stick-figure (nhân vật que)</option>
+              <option value="flat-vector">Flat vector</option>
+              <option value="storybook">Storybook (màu nước)</option>
+              <option value="cinematic">Cinematic 3D</option>
+              <option value="anime">Anime</option>
+            </select></div>
+          <div><label>Tỉ lệ</label>
+            <select id="sb-aspect"><option>16:9</option><option>9:16</option><option>1:1</option></select></div>
+          <div><label>Số từ / cảnh</label><input id="sb-words" type="number" value="32" min="10"></div>
+        </div>
+        <label>Nhân vật cố định (mỗi dòng: Tên | mô tả)</label>
+        <textarea id="sb-chars" style="min-height:70px" placeholder="Hero | cậu bé áo đỏ, khăn vàng, luôn cầm đèn pin&#10;Dog | chú chó nâu nhỏ, vòng cổ xanh"></textarea>
+        <div class="btns"><button class="btn" id="sb-run">Tạo storyboard</button>
+          <button class="btn sec" id="sb-copy">Copy tất cả prompt</button></div>
+      </div>
+      <div id="sb-out"></div>
+    </section>
+
+    <!-- MUSE.AI -->
+    <section id="museai" class="view">
+      <h1>Tự động hoá muse.ai</h1>
+      <p class="sub">Điều khiển Chrome đã đăng nhập để tạo ảnh/video hàng loạt từ danh sách prompt.</p>
+      <div class="warn">⚠️ Tự động hoá web có thể vi phạm Điều khoản dịch vụ của muse.ai. Chỉ dùng cho tài khoản của chính bạn. App không lưu mật khẩu — bạn tự đăng nhập một lần, phiên được giữ lại.</div>
+
+      <div class="card">
+        <h1 style="font-size:15px;margin-bottom:8px">Tài khoản (mỗi tài khoản = 1 profile Chrome riêng)</h1>
+        <div class="row">
+          <input id="acc-name" placeholder="Tên tài khoản (vd: Kênh A)">
+          <button class="btn sec" id="acc-add" style="flex:0 0 auto">+ Thêm</button>
+        </div>
+        <div id="acc-list" style="margin-top:10px"></div>
+      </div>
+
+      <div class="card">
+        <label>Chọn tài khoản</label>
+        <select id="m-acc"></select>
+        <div class="btns">
+          <button class="btn sec" id="m-open">Mở muse.ai (đăng nhập)</button>
+          <button class="btn sec" id="m-check">Kiểm tra đăng nhập</button>
+          <span class="pill" id="m-status">—</span>
+        </div>
+        <label style="margin-top:14px">Danh sách prompt (mỗi dòng 1 prompt) — hoặc bấm "Lấy từ Storyboard"</label>
+        <textarea id="m-prompts" placeholder="a cat astronaut, flat vector&#10;a dog pilot, flat vector"></textarea>
+        <div class="btns"><button class="btn sec" id="m-from-sb">⬇ Lấy từ Storyboard</button></div>
+        <div class="row">
+          <div><label>Thư mục lưu ảnh</label>
+            <div class="btns"><button class="btn sec" id="m-pick-dir">Chọn…</button><span class="pill" id="m-dir">—</span></div></div>
+        </div>
+        <div class="btns"><button class="btn ok" id="m-run">Chạy tạo ảnh hàng loạt</button></div>
+        <div class="bar"><i id="m-prog"></i></div>
+        <div class="log" id="m-log" style="display:none"></div>
+        <p class="hint">Selector DOM của muse.ai chỉnh ở tab <b>Cài đặt</b> nếu không nhận đúng ô nhập / nút tạo / ảnh kết quả.</p>
+      </div>
+    </section>
+
+    <!-- TTS -->
+    <section id="tts" class="view">
+      <h1>Giọng đọc (TTS)</h1>
+      <p class="sub">Chuyển kịch bản thành giọng đọc neural (Edge voices, miễn phí). Dùng làm lồng tiếng ở tab Ghép video.</p>
+      <div class="warn">Văn bản được gửi tới dịch vụ TTS trực tuyến của Microsoft để tạo giọng đọc.</div>
+      <div class="card">
+        <label>Nội dung</label>
+        <textarea id="t-text" placeholder="Nhập hoặc dán lời dẫn..."></textarea>
+        <div class="btns"><button class="btn sec" id="t-from-sb">⬇ Lấy lời dẫn từ Storyboard</button></div>
+        <div class="row">
+          <div><label>Giọng</label><select id="t-voice"></select></div>
+          <div><label>Tốc độ</label>
+            <select id="t-rate"><option value="-15%">Chậm</option><option value="0%" selected>Bình thường</option><option value="15%">Nhanh</option></select></div>
+        </div>
+        <div class="btns"><button class="btn ok" id="t-run">Tạo file giọng đọc (.mp3)</button>
+          <button class="btn sec" id="t-open" disabled>Mở thư mục</button></div>
+        <div class="bar"><i id="t-prog"></i></div>
+        <div class="log" id="t-log" style="display:none"></div>
+      </div>
+    </section>
+
+    <!-- VIDEO -->
+    <section id="video" class="view">
+      <h1>Ghép video hàng loạt</h1>
+      <p class="sub">Ảnh + lồng tiếng + nhạc nền → video (Ken Burns, chuyển cảnh mượt).</p>
+      <div class="card">
+        <div class="btns">
+          <button class="btn sec" id="v-pick-imgs">Chọn ảnh (nhiều)…</button>
+          <span class="pill" id="v-img-count">0 ảnh</span>
+        </div>
+        <div class="filelist" id="v-imglist"></div>
+        <div class="row">
+          <div><label>Độ phân giải</label>
+            <select id="v-res"><option value="1920x1080">1920×1080 (16:9)</option>
+              <option value="1080x1920">1080×1920 (9:16)</option>
+              <option value="1080x1080">1080×1080 (1:1)</option></select></div>
+          <div><label>FPS</label><input id="v-fps" type="number" value="30"></div>
+          <div><label>Giây / ảnh</label><input id="v-dur" type="number" value="3.5" step="0.5"></div>
+          <div><label>Chuyển cảnh (s)</label><input id="v-xf" type="number" value="0.6" step="0.1"></div>
+        </div>
+        <label><input type="checkbox" id="v-kb" checked style="width:auto"> Hiệu ứng Ken Burns (zoom nhẹ)</label>
+        <div class="row">
+          <div><label>Lồng tiếng (tuỳ chọn)</label>
+            <div class="btns"><button class="btn sec" id="v-pick-vo">Chọn…</button><span class="pill" id="v-vo">—</span></div></div>
+          <div><label>Nhạc nền (tuỳ chọn)</label>
+            <div class="btns"><button class="btn sec" id="v-pick-bgm">Chọn…</button><span class="pill" id="v-bgm">—</span></div></div>
+          <div><label>Âm lượng nhạc nền</label><input id="v-bgmvol" type="number" value="0.18" step="0.02" min="0" max="1"></div>
+        </div>
+        <div class="btns"><button class="btn ok" id="v-run">Render video</button>
+          <button class="btn sec" id="v-open" disabled>Mở thư mục</button></div>
+        <div class="bar"><i id="v-prog"></i></div>
+        <div class="log" id="v-log" style="display:none"></div>
+      </div>
+    </section>
+
+    <!-- SUBTITLES -->
+    <section id="subs" class="view">
+      <h1>Phụ đề tự động (Whisper)</h1>
+      <p class="sub">Nhận dạng giọng nói <b>offline</b> → xuất file .srt. Cần cấu hình whisper.cpp ở tab Cài đặt.</p>
+      <div class="card">
+        <div class="btns"><button class="btn sec" id="s-pick">Chọn video/audio…</button><span class="pill" id="s-file">—</span></div>
+        <div class="row">
+          <div><label>Ngôn ngữ</label>
+            <select id="s-lang"><option value="auto">Tự nhận</option><option value="vi">Tiếng Việt</option>
+              <option value="en">English</option><option value="ja">日本語</option><option value="zh">中文</option></select></div>
+        </div>
+        <div class="btns"><button class="btn ok" id="s-run">Tạo phụ đề .srt</button>
+          <button class="btn sec" id="s-open" disabled>Mở thư mục</button></div>
+        <div class="bar"><i id="s-prog"></i></div>
+        <div class="log" id="s-log" style="display:none"></div>
+      </div>
+      <div class="card">
+        <h1 style="font-size:15px;margin-bottom:8px">Ghi cứng phụ đề vào video (Shorts/TikTok)</h1>
+        <div class="row">
+          <div><label>Video gốc</label><div class="btns"><button class="btn sec" id="b-vid">Chọn…</button><span class="pill" id="b-vid-v">—</span></div></div>
+          <div><label>File .srt</label><div class="btns"><button class="btn sec" id="b-srt">Chọn…</button><span class="pill" id="b-srt-v">—</span></div></div>
+          <div><label>Cỡ chữ</label><input id="b-font" type="number" value="22"></div>
+        </div>
+        <div class="btns"><button class="btn ok" id="b-run">Ghi phụ đề → video mới</button>
+          <button class="btn sec" id="b-open" disabled>Mở thư mục</button></div>
+        <div class="bar"><i id="b-prog"></i></div>
+        <div class="log" id="b-log" style="display:none"></div>
+      </div>
+    </section>
+
+    <!-- SOCIAL -->
+    <section id="social" class="view">
+      <h1>Đăng mạng xã hội</h1>
+      <p class="sub">Soạn bài Facebook tự động trong Chrome đã đăng nhập, hoặc mở LadiPage/web khác.</p>
+      <div class="warn">⚠️ Tự động đăng có thể vi phạm điều khoản Facebook và gây hạn chế tài khoản. Mặc định app chỉ <b>soạn sẵn</b> và để bạn tự bấm Đăng. Chỉ dùng tài khoản của bạn.</div>
+      <div class="card">
+        <label>Tài khoản (profile Chrome — dùng chung với tab muse.ai)</label>
+        <select id="so-acc"></select>
+        <label>Nội dung bài đăng</label>
+        <textarea id="so-text" placeholder="Nội dung..."></textarea>
+        <label><input type="checkbox" id="so-auto" style="width:auto"> Tự động bấm Đăng (không khuyến nghị)</label>
+        <div class="btns"><button class="btn ok" id="so-fb">Soạn bài Facebook</button></div>
+        <div class="bar"><i id="so-prog"></i></div>
+        <div class="log" id="so-log" style="display:none"></div>
+      </div>
+      <div class="card">
+        <label>Mở LadiPage / trang web (trong profile đã đăng nhập)</label>
+        <div class="row">
+          <input id="so-url" placeholder="https://app.ladipage.vn/ ...">
+          <button class="btn sec" id="so-open" style="flex:0 0 auto">Mở</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- SETTINGS -->
+    <section id="settings" class="view">
+      <h1>Cài đặt</h1>
+      <p class="sub">Đường dẫn công cụ. ffmpeg đã kèm sẵn; Whisper do bạn tự cung cấp (không kèm model bản quyền).</p>
+      <div class="card">
+        <h1 style="font-size:15px;margin-bottom:8px">Claude API (cho tab AI kịch bản)</h1>
+        <label>API key (sk-ant-...)</label>
+        <input id="set-claude-key" type="password" placeholder="sk-ant-...">
+        <label>Model</label>
+        <input id="set-claude-model" placeholder="claude-opus-5-5">
+        <div class="btns"><button class="btn" id="set-claude-save">Lưu</button>
+          <span class="pill" id="set-claude-saved" style="display:none">Đã lưu ✓</span></div>
+        <p class="hint">Lấy key tại console của Claude. Key lưu cục bộ trên máy bạn, không gửi đi đâu ngoài API Claude.</p>
+      </div>
+      <div class="card">
+        <label>whisper.cpp binary (vd: whisper-cli.exe / main.exe)</label>
+        <div class="btns"><button class="btn sec" id="set-wbin">Chọn…</button><span class="pill" id="set-wbin-v">—</span></div>
+        <label>Whisper model (.bin / .gguf, vd: ggml-base.bin)</label>
+        <div class="btns"><button class="btn sec" id="set-wmodel">Chọn…</button><span class="pill" id="set-wmodel-v">—</span></div>
+        <div class="warn">Tải whisper.cpp tại github.com/ggerganov/whisper.cpp và model ggml tương ứng. Đây là phần mềm nguồn mở, bạn tự tải để tránh kèm file bản quyền.</div>
+      </div>
+      <div class="card">
+        <h1 style="font-size:15px;margin-bottom:8px">muse.ai — đường dẫn Chrome & selector DOM</h1>
+        <label>Chrome/Edge (để trống = tự dò)</label>
+        <div class="btns"><button class="btn sec" id="set-chrome">Chọn…</button><span class="pill" id="set-chrome-v">tự dò</span></div>
+        <label>generateUrl (trang tạo ảnh/video)</label>
+        <input id="sel-url" placeholder="https://muse.ai/">
+        <label>promptInput (ô nhập prompt)</label>
+        <input id="sel-input" placeholder="textarea, [contenteditable=true]">
+        <label>generateButton (nút tạo)</label>
+        <input id="sel-btn" placeholder='button:has-text("Generate")'>
+        <label>resultImage (ảnh kết quả)</label>
+        <input id="sel-img" placeholder='img[src^="blob:"]'>
+        <div class="btns"><button class="btn" id="sel-save">Lưu selector</button>
+          <span class="pill" id="sel-saved" style="display:none">Đã lưu ✓</span></div>
+        <p class="hint">Các selector dùng cú pháp Playwright. Mở muse.ai, bấm F12 để tìm selector đúng rồi dán vào đây.</p>
+      </div>
+    </section>
+  </main>
+</div>
+<script type="module" src="app.js"></script>
+</body>
+</html>

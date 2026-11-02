@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+out/
+*.exe
+*.blockmap
+
+# Logs
+*.log
+npm-debug.log*
+
+# Local settings / secrets (Electron stores these in userData, but just in case)
+settings.json
+.env
+*.local
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
